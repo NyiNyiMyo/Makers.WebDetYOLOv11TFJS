@@ -1,0 +1,93 @@
+import React, { useState, useEffect, useRef } from "react";
+import * as tf from "@tensorflow/tfjs";
+import "@tensorflow/tfjs-backend-webgl"; // set backend to webgl
+import Loader from "./components/loader";
+import ButtonHandler from "./components/btn-handler";
+import { detect, detectVideo } from "./utils/detect";
+import "./style/App.css";
+
+const App = () => {
+  const [loading, setLoading] = useState({ loading: true, progress: 0 }); // loading state
+  const [model, setModel] = useState({
+    net: null,
+    inputShape: [1, 0, 0, 3],
+  }); // init model & input shape
+
+  // references
+  const imageRef = useRef(null);
+  const cameraRef = useRef(null);
+  const videoRef = useRef(null);
+  const canvasRef = useRef(null);
+
+  // model configs
+  const modelName = "yolo11n"; // "yolov8n";
+
+  useEffect(() => {
+    tf.ready().then(async () => {
+      const yolov11 = await tf.loadGraphModel(
+        `${window.location.href}/${modelName}_web_model/model.json`,
+        {
+          onProgress: (fractions) => {
+            setLoading({ loading: true, progress: fractions }); // set loading fractions
+          },
+        }
+      ); // load model
+
+      // warming up model
+      const dummyInput = tf.ones(yolov11.inputs[0].shape);
+      const warmupResults = yolov11.execute(dummyInput);
+
+      setLoading({ loading: false, progress: 1 });
+      setModel({
+        net: yolov11,
+        inputShape: yolov11.inputs[0].shape,
+      }); // set model & input shape
+
+      tf.dispose([warmupResults, dummyInput]); // cleanup memory
+    });
+  }, []);
+
+  return (
+    <div className="App">
+      {loading.loading && <Loader>Loading Model... {(loading.progress * 100).toFixed(2)}%</Loader>}
+      <div className="header">
+        <h2 style={{fontSize: "24px", color: "#f77a06ff"}}>📟 Makers - Real-Time YOLOv11 Object Detection</h2>
+        <p style={{ fontWeight: "bold"}}>
+          YOLOv11 in TensorFlow.js — COCO-80 Classes
+        </p>
+        <p>
+          Serving Model : <code className="code">{modelName}</code>
+        </p>
+      </div>
+
+      <div className="content">
+        <img
+          src="#"
+          ref={imageRef}
+          onLoad={() => detect(imageRef.current, model, canvasRef.current)}
+        />
+        <video
+          autoPlay
+          muted
+          playsInline
+          webkit-playsinline="true"
+          ref={cameraRef}
+          onPlay={() => detectVideo(cameraRef.current, model, canvasRef.current)}
+        />
+        <video
+          autoPlay
+          muted
+          playsInline
+          webkit-playsinline="true"
+          ref={videoRef}
+          onPlay={() => detectVideo(videoRef.current, model, canvasRef.current)}
+        />
+        <canvas width={model.inputShape[1]} height={model.inputShape[2]} ref={canvasRef} />
+      </div>
+
+      <ButtonHandler imageRef={imageRef} cameraRef={cameraRef} videoRef={videoRef} />
+    </div>
+  );
+};
+
+export default App;
