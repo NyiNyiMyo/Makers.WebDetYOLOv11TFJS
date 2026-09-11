@@ -26,7 +26,7 @@ const App = () => {
     tf.ready().then(async () => {
       const yolov11 = await tf.loadGraphModel(
         // `${window.location.href}/${modelName}_web_model/model.json`,
-        `${window.location.origin}/${modelName}_web_model/model.json`,
+        `${window.location.origin}/${modelName}_web_model/model.json`, // for sharing link
         {
           onProgress: (fractions) => {
             setLoading({ loading: true, progress: fractions }); // set loading fractions
